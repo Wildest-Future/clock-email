@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/db";
 import { StatusDots } from "@/components/status-dots";
 import { TickingClock } from "@/components/ticking-clock";
