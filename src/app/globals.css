@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #FAF4DD;
+  --color-foreground: #282413;
+
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
+
+  /* Primary — Velvet Teal */
+  --color-velvet-700: #112627;
+  --color-velvet-600: #193638;
+  --color-velvet-500: #224749;
+  --color-velvet-400: #2B5759;
+  --color-velvet-300: #356769;
+  --color-velvet-100: #BBC8C9;
+
+  /* Secondary */
+  --color-olive: #8E9370;
+  --color-olive-deep: #6E744F;
+
+  /* Accents */
+  --color-bronze: #A67C52;
+  --color-oxide: #8B504C;
+
+  /* Neutrals */
+  --color-paper: #FAF4DD;
+  --color-stone: #EEE8D2;
+  --color-sand-300: #DAD4BF;
+  --color-sand-400: #C3BEA9;
+  --color-warmgray: #AAA590;
+  --color-sand-600: #86806C;
+  --color-sand-700: #635E4B;
+  --color-sand-800: #423D2B;
+  --color-ink: #282413;
+
+  /* Semantic */
+  --color-ok: #2F7D57;
+  --color-warn: #B57A2A;
+  --color-info: #3B7FA6;
+  --color-crit: #8D3E3A;
+}
+
+body {
+  background: #FAF4DD;
+  color: #282413;
+  font-family: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-plex-mono), ui-monospace, monospace;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: #356769;
+  color: white;
+}
+
+@keyframes colon-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}

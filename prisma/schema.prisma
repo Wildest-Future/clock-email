@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ClockStatus {
+  active
+  response_received
+  disputed
+  resolved
+  inactive
+}
+
+model Campaign {
+  identifier     String   @id
+  slug           String
+  code           String
+  name           String
+  description    String   @default("")
+  emailTemplate  String?  @map("email_template")
+  suggestedSubject String? @map("suggested_subject")
+  createdByEmail String   @map("created_by_email")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  targets CampaignTarget[]
+  clocks  Clock[]
+
+  @@unique([slug, code])
+  @@map("campaigns")
+}
+
+model CampaignTarget {
+  id             String @id @default(cuid())
+  campaignId     String @map("campaign_identifier")
+  email          String
+
+  campaign Campaign @relation(fields: [campaignId], references: [identifier])
+
+  @@unique([campaignId, email])
+  @@map("campaign_targets")
+}
+
+model Clock {
+  id                    String      @id @default(cuid())
+  senderEmail           String      @map("sender_email")
+  senderDisplayName     String?     @map("sender_display_name")
+  recipientEmail        String      @map("recipient_email")
+  campaignIdentifier    String      @map("campaign_identifier")
+  subjectLine           String      @map("subject_line")
+  startedAt             DateTime    @default(now()) @map("started_at")
+  resolvedAt            DateTime?   @map("resolved_at")
+  resolutionBackdatedTo DateTime?   @map("resolution_backdated_to")
+  status                ClockStatus @default(active)
+  checkInToken          String      @unique @map("check_in_token")
+  lastCheckInSent       DateTime?   @map("last_check_in_sent")
+  messageId             String?     @unique @map("message_id")
+  createdAt             DateTime    @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [campaignIdentifier], references: [identifier])
+  statusHistory StatusEvent[]
+  resolutionRequest GovernmentResolutionRequest?
+
+  @@map("clocks")
+}
+
+model StatusEvent {
+  id        String      @id @default(cuid())
+  clockId   String      @map("clock_id")
+  status    ClockStatus
+  note      String?
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  clock Clock @relation(fields: [clockId], references: [id])
+
+  @@map("status_events")
+}
+
+model GovernmentResolutionRequest {
+  id                  String   @id @default(cuid())
+  clockId             String   @unique @map("clock_id")
+  requestedAt         DateTime @default(now()) @map("requested_at")
+  claimedResponseDate DateTime @map("claimed_response_date")
+  note                String   @default("")
+
+  clock Clock @relation(fields: [clockId], references: [id])
+
+  @@map("government_resolution_requests")
+}
