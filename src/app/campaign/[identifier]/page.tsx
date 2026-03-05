@@ -4,7 +4,30 @@ import { prisma } from "@/lib/db";
 import { ClockRow } from "@/components/clock-row";
 import { SendEmailButton } from "@/components/send-email-button";
 import { TickingClock } from "@/components/ticking-clock";
+import type { Metadata } from "next";
 import type { Clock, CampaignTarget } from "@/generated/prisma";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ identifier: string }>;
+}): Promise<Metadata> {
+  const { identifier } = await params;
+  const campaign = await prisma.campaign.findUnique({
+    where: { identifier },
+    include: { _count: { select: { clocks: true } } },
+  });
+  if (!campaign) return {};
+  const desc = campaign.description || "A civic accountability campaign on clock.email";
+  return {
+    title: campaign.name,
+    description: desc,
+    openGraph: {
+      title: `${campaign.name} — clock.email`,
+      description: `${campaign._count.clocks} clock${campaign._count.clocks !== 1 ? "s" : ""} ticking. ${desc}`,
+    },
+  };
+}
 
 export default async function CampaignPage({
   params,

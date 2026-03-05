@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseInboundEmail } from "@/lib/parse-inbound";
 import { generateCheckInToken } from "@/lib/tokens";
+import { sendEmail } from "@/lib/send-email";
+import { clockStartedEmail, newClockNotificationEmail } from "@/lib/email-templates";
 
 /**
  * POST /api/inbound-email
@@ -106,11 +108,41 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    createdClocks.push(clock.id);
+    createdClocks.push({ id: clock.id, recipientEmail });
+  }
+
+  // Send confirmation emails (fire-and-forget, don't block the response)
+  for (const created of createdClocks) {
+    sendEmail(
+      clockStartedEmail({
+        clockId: created.id,
+        senderEmail: parsed.senderEmail,
+        recipientEmail: created.recipientEmail,
+        campaignName: campaign.name,
+        campaignIdentifier: campaign.identifier,
+        subjectLine: parsed.subjectLine,
+      }),
+    ).catch((err) => console.error(`Failed to send clock-started email:`, err));
+  }
+
+  // Notify campaign creator
+  if (createdClocks.length > 0) {
+    const clockCount = await prisma.clock.count({
+      where: { campaignIdentifier: campaign.identifier },
+    });
+    sendEmail(
+      newClockNotificationEmail({
+        campaignName: campaign.name,
+        campaignIdentifier: campaign.identifier,
+        creatorEmail: campaign.createdByEmail,
+        recipientEmail: createdClocks[0].recipientEmail,
+        clockCount,
+      }),
+    ).catch((err) => console.error(`Failed to send creator notification:`, err));
   }
 
   return NextResponse.json({
     message: `Created ${createdClocks.length} clock(s)`,
-    clockIds: createdClocks,
+    clockIds: createdClocks.map((c) => c.id),
   });
 }

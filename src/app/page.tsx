@@ -47,7 +47,7 @@ export default async function HomePage() {
         </h1>
         <p className="text-sand-600 mt-3 text-lg">
           When you email a government official and CC clock.email, a public timer
-          starts. It stops when they respond. No accounts, no apps — just email.
+          starts. It stops when they respond.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link

@@ -44,48 +44,53 @@ export function ClockRow(props: ClockRowProps) {
 
   return (
     <div
-      className="py-4 px-4 border-l-4"
+      className="relative border-l-4"
       style={{ borderLeftColor: ageColor }}
     >
-      <div className="flex items-center justify-between">
-        <TickingClock
-          startedAt={props.startedAt}
-          resolvedAt={props.resolvedAt}
-          resolutionBackdatedTo={props.resolutionBackdatedTo}
-          className="font-mono text-lg sm:text-xl tabular-nums font-bold"
-          ageColor
-        />
-        <span
-          className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ml-3 shrink-0"
-          style={{ backgroundColor: style.bg, color: style.text }}
-        >
-          {statusLabels[props.status] ?? props.status}
-        </span>
-      </div>
-      <div className="mt-1">
-        <Link
-          href={`/clock/${props.id}`}
-          className="text-sm font-medium text-ink hover:text-velvet-500 transition-colors truncate block"
-        >
-          {props.subjectLine}
-        </Link>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-sand-600 mt-0.5">
-          {props.recipientEmail && (
-            <Link
-              href={`/recipient/${encodeURIComponent(props.recipientEmail)}`}
-              className="font-mono hover:text-velvet-500 transition-colors"
-            >
-              {props.recipientEmail}
-            </Link>
-          )}
-          {props.campaignName && (
-            <Link
-              href={`/campaign/${props.campaignIdentifier}`}
-              className="hover:text-bronze transition-colors"
-            >
-              {props.campaignName}
-            </Link>
-          )}
+      {/* Full-row link to clock page */}
+      <Link
+        href={`/clock/${props.id}`}
+        className="absolute inset-0 z-0"
+        aria-label={props.subjectLine}
+      />
+      <div className="py-4 px-4 hover:bg-stone/50 transition-colors">
+        <div className="flex items-center justify-between">
+          <TickingClock
+            startedAt={props.startedAt}
+            resolvedAt={props.resolvedAt}
+            resolutionBackdatedTo={props.resolutionBackdatedTo}
+            className="font-mono text-lg sm:text-xl tabular-nums font-bold"
+            ageColor
+          />
+          <span
+            className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ml-3 shrink-0"
+            style={{ backgroundColor: style.bg, color: style.text }}
+          >
+            {statusLabels[props.status] ?? props.status}
+          </span>
+        </div>
+        <div className="mt-1">
+          <span className="text-sm font-medium text-ink truncate block">
+            {props.subjectLine}
+          </span>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-sand-600 mt-0.5">
+            {props.recipientEmail && (
+              <Link
+                href={`/recipient/${encodeURIComponent(props.recipientEmail)}`}
+                className="font-mono hover:text-velvet-500 transition-colors relative z-10"
+              >
+                {props.recipientEmail}
+              </Link>
+            )}
+            {props.campaignName && (
+              <Link
+                href={`/campaign/${props.campaignIdentifier}`}
+                className="hover:text-bronze transition-colors relative z-10"
+              >
+                {props.campaignName}
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </div>

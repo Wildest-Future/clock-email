@@ -16,10 +16,26 @@ const plexSans = IBM_Plex_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://clock.email";
+
 export const metadata: Metadata = {
-  title: "clock.email — Government Response Time, Made Visible",
+  title: {
+    default: "clock.email — Government Response Time, Made Visible",
+    template: "%s — clock.email",
+  },
   description:
     "A civic accountability tool that makes government response time publicly visible. CC start@clock.email when you email a government official, and a public timer starts counting.",
+  metadataBase: new URL(BASE_URL),
+  openGraph: {
+    type: "website",
+    siteName: "clock.email",
+    title: "clock.email — Government Response Time, Made Visible",
+    description:
+      "When you email a government official and CC clock.email, a public timer starts. It stops when they respond.",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 export default function RootLayout({

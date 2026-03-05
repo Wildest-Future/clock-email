@@ -2,9 +2,29 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { ClockRow } from "@/components/clock-row";
+import type { Metadata } from "next";
 import type { Clock, Campaign } from "@/generated/prisma";
 
 type ClockWithCampaign = Clock & { campaign: Campaign };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ email: string }>;
+}): Promise<Metadata> {
+  const { email: encodedEmail } = await params;
+  const email = decodeURIComponent(encodedEmail);
+  const count = await prisma.clock.count({ where: { recipientEmail: email } });
+  if (count === 0) return {};
+  return {
+    title: email,
+    description: `${count} clock${count !== 1 ? "s" : ""} tracking response time for ${email}.`,
+    openGraph: {
+      title: `${email} — clock.email`,
+      description: `${count} clock${count !== 1 ? "s" : ""} tracking government response time.`,
+    },
+  };
+}
 
 export default async function RecipientPage({
   params,
