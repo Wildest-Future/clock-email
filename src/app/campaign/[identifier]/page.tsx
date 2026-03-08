@@ -43,12 +43,13 @@ export default async function CampaignPage({
     include: {
       targets: true,
       clocks: {
+        where: { hidden: false },
         orderBy: { startedAt: "asc" },
       },
     },
   });
 
-  if (!campaign) notFound();
+  if (!campaign || campaign.hidden) notFound();
 
   const ccAddress = `start+${campaign.identifier}@clock.email`;
   const activeClocks = campaign.clocks.filter(

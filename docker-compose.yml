@@ -22,11 +22,16 @@ services:
     environment:
       DATABASE_URL: postgresql://clockemail:${DB_PASSWORD}@db:5432/clockemail?schema=public
       NEXT_PUBLIC_BASE_URL: https://clock.email
-      SMTP_HOST: ${SMTP_HOST:-localhost}
-      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_HOST: ${SMTP_HOST:-smtp.mailgun.org}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-postmaster@clock.email}
+      SMTP_PASS: ${SMTP_PASS}
       EMAIL_FROM: "clock.email <noreply@clock.email>"
-      EMAIL_DISABLED: ${EMAIL_DISABLED:-true}
+      EMAIL_DISABLED: ${EMAIL_DISABLED:-false}
+      MAILGUN_WEBHOOK_SIGNING_KEY: ${MAILGUN_WEBHOOK_SIGNING_KEY}
       CRON_SECRET: ${CRON_SECRET}
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
+      ADMIN_NAME: ${ADMIN_NAME:-Admin}
     depends_on:
       db:
         condition: service_healthy

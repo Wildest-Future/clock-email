@@ -197,3 +197,48 @@ View the campaign: ${campaignUrl}
 
   return { to: params.creatorEmail, subject, text, html };
 }
+
+// ─── Domain Blocked ─────────────────────────────────────────────
+
+interface DomainBlockedParams {
+  senderEmail: string;
+  blockedRecipients: string[];
+}
+
+export function domainBlockedEmail(params: DomainBlockedParams) {
+  const recipientList = params.blockedRecipients.join(", ");
+
+  const subject = "clock.email — recipient domain not accepted";
+
+  const text = `Hi,
+
+Your email to ${recipientList} could not create a clock on clock.email.
+
+clock.email only tracks correspondence with government officials. The recipient's email domain is not recognized as a government domain.
+
+If you believe this is a mistake, you can submit the domain for review at ${BASE_URL}/transparency.
+
+— clock.email`;
+
+  const html = wrap(`
+    <h1 style="font-family:monospace;font-size:22px;color:#282413;margin:0 0 16px;">
+      Recipient domain not accepted.
+    </h1>
+    <p style="font-size:15px;color:#282413;line-height:1.5;margin:0 0 8px;">
+      Your email to <strong style="font-family:monospace;color:#224749;">${recipientList}</strong>
+      could not create a clock on clock.email.
+    </p>
+    <p style="font-size:15px;color:#635E4B;line-height:1.5;margin:0 0 20px;">
+      clock.email only tracks correspondence with government officials. The recipient's
+      email domain is not recognized as a government domain.
+    </p>
+    <p style="font-size:14px;color:#635E4B;line-height:1.5;margin:0 0 20px;">
+      If you believe this is a mistake, you can submit the domain for review on our transparency page.
+    </p>
+    <div style="text-align:center;">
+      ${button(`${BASE_URL}/transparency`, "Submit domain for review")}
+    </div>
+  `);
+
+  return { to: params.senderEmail, subject, text, html };
+}

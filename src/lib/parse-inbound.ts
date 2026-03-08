@@ -1,5 +1,5 @@
 /**
- * Parses an inbound email from Postal's webhook payload.
+ * Parses an inbound email from either Mailgun's or Postal's webhook payload.
  * Extracts sender, recipients, subject, campaign identifier, and message ID.
  */
 
@@ -16,26 +16,91 @@ export interface ParsedInboundEmail {
 
 const CLOCK_DOMAIN = "clock.email";
 
-export function parseInboundEmail(payload: {
-  mail_from: string;
-  rcpt_to: string;
-  subject?: string;
-  message_id?: string;
-  timestamp?: number;
-  to?: string;
-  cc?: string;
-}): ParsedInboundEmail {
-  const senderEmail = payload.mail_from.toLowerCase().trim();
-  const subjectLine = payload.subject ?? "(no subject)";
-  const messageId = payload.message_id ?? null;
+/**
+ * Detects format and parses accordingly.
+ * Mailgun sends: sender, recipient, subject, To, Cc, Message-Id, timestamp, etc.
+ * Postal sends:  mail_from, rcpt_to, subject, to, cc, message_id, timestamp, etc.
+ */
+export function parseInboundEmail(
+  payload: Record<string, string | number | undefined>
+): ParsedInboundEmail {
+  // Detect format: Mailgun uses "sender", Postal uses "mail_from"
+  const isMailgun = "sender" in payload && "recipient" in payload;
+
+  if (isMailgun) {
+    return parseMailgun(payload);
+  }
+  return parsePostal(payload);
+}
+
+// ─── Mailgun format ─────────────────────────────────────────────
+
+function parseMailgun(
+  payload: Record<string, string | number | undefined>
+): ParsedInboundEmail {
+  const senderEmail = extractFirstEmail(String(payload.sender ?? "")) ?? "";
+  const subjectLine = String(payload.subject ?? "(no subject)");
+  const messageId = payload["Message-Id"]
+    ? String(payload["Message-Id"])
+    : null;
   const timestamp = payload.timestamp
-    ? new Date(payload.timestamp * 1000)
+    ? new Date(Number(payload.timestamp) * 1000)
     : new Date();
 
-  // Collect all recipient addresses from To and CC headers
-  const allRecipients = collectRecipients(payload.to, payload.cc, payload.rcpt_to);
+  // Mailgun provides To, Cc, and recipient (envelope)
+  const allRecipients = collectRecipients(
+    String(payload.To ?? payload.to ?? ""),
+    String(payload.Cc ?? payload.cc ?? ""),
+    String(payload.recipient ?? "")
+  );
 
-  // Find the clock.email address and extract campaign identifier
+  return classifyRecipients(allRecipients, {
+    senderEmail,
+    subjectLine,
+    messageId,
+    timestamp,
+  });
+}
+
+// ─── Postal format ──────────────────────────────────────────────
+
+function parsePostal(
+  payload: Record<string, string | number | undefined>
+): ParsedInboundEmail {
+  const senderEmail = String(payload.mail_from ?? "")
+    .toLowerCase()
+    .trim();
+  const subjectLine = String(payload.subject ?? "(no subject)");
+  const messageId = payload.message_id ? String(payload.message_id) : null;
+  const timestamp = payload.timestamp
+    ? new Date(Number(payload.timestamp) * 1000)
+    : new Date();
+
+  const allRecipients = collectRecipients(
+    String(payload.to ?? ""),
+    String(payload.cc ?? ""),
+    String(payload.rcpt_to ?? "")
+  );
+
+  return classifyRecipients(allRecipients, {
+    senderEmail,
+    subjectLine,
+    messageId,
+    timestamp,
+  });
+}
+
+// ─── Shared helpers ─────────────────────────────────────────────
+
+function classifyRecipients(
+  allRecipients: string[],
+  base: {
+    senderEmail: string;
+    subjectLine: string;
+    messageId: string | null;
+    timestamp: Date;
+  }
+): ParsedInboundEmail {
   let clockEmailRecipient: string | null = null;
   let campaignIdentifier: string | null = null;
   const governmentRecipients: string[] = [];
@@ -50,21 +115,17 @@ export function parseInboundEmail(payload: {
   }
 
   return {
-    senderEmail,
+    ...base,
     recipientEmails: allRecipients,
     governmentRecipients,
     clockEmailRecipient,
     campaignIdentifier,
-    subjectLine,
-    messageId,
-    timestamp,
   };
 }
 
 /**
  * Extracts the campaign identifier from a plus-addressed clock.email address.
  * e.g., "start+mattapan-bus-a7k2m@clock.email" -> "mattapan-bus-a7k2m"
- * e.g., "start@clock.email" -> null (unaffiliated clock)
  */
 function extractCampaignIdentifier(email: string): string | null {
   const localPart = email.split("@")[0];
@@ -75,7 +136,15 @@ function extractCampaignIdentifier(email: string): string | null {
 }
 
 /**
- * Collects unique email addresses from To, CC headers and the envelope rcpt_to.
+ * Extracts the first email address from a string like "Name <email>" or plain "email".
+ */
+function extractFirstEmail(str: string): string | null {
+  const match = str.match(/[\w.+-]+@[\w.-]+/);
+  return match ? match[0].toLowerCase().trim() : null;
+}
+
+/**
+ * Collects unique email addresses from To, CC headers and the envelope recipient.
  */
 function collectRecipients(
   to?: string,
@@ -86,7 +155,6 @@ function collectRecipients(
 
   const parse = (header?: string) => {
     if (!header) return;
-    // Handle formats like "Name <email>" or plain "email"
     const matches = header.match(/[\w.+-]+@[\w.-]+/g);
     if (matches) {
       for (const m of matches) {

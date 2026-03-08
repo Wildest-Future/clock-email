@@ -1,25 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseInboundEmail } from "@/lib/parse-inbound";
+import { verifyMailgunSignature } from "@/lib/verify-mailgun";
+import { evaluateDomain } from "@/lib/domain-check";
 import { generateCheckInToken } from "@/lib/tokens";
 import { sendEmail } from "@/lib/send-email";
-import { clockStartedEmail, newClockNotificationEmail } from "@/lib/email-templates";
+import {
+  clockStartedEmail,
+  newClockNotificationEmail,
+  domainBlockedEmail,
+} from "@/lib/email-templates";
 
 /**
  * POST /api/inbound-email
  *
- * Webhook endpoint for Postal. Receives inbound email data,
- * parses it, and creates clock records.
+ * Webhook endpoint for inbound email. Supports both:
+ * - Mailgun (multipart/form-data with signature verification)
+ * - Postal (JSON payload)
  *
+ * Receives inbound email data, parses it, and creates clock records.
  * Campaign-centric: a valid campaign identifier in the plus-tag is required.
  * The TO address must match one of the campaign's target emails.
  */
 export async function POST(request: NextRequest) {
-  let payload;
+  let payload: Record<string, string | number | undefined>;
+
+  const contentType = request.headers.get("content-type") ?? "";
+
   try {
-    payload = await request.json();
+    if (contentType.includes("multipart/form-data") || contentType.includes("application/x-www-form-urlencoded")) {
+      // Mailgun sends multipart/form-data
+      const formData = await request.formData();
+      payload = {};
+      for (const [key, value] of formData.entries()) {
+        if (typeof value === "string") {
+          payload[key] = value;
+        }
+      }
+
+      // Verify Mailgun webhook signature
+      const timestamp = String(payload.timestamp ?? "");
+      const token = String(payload.token ?? "");
+      const signature = String(payload.signature ?? "");
+
+      if (!verifyMailgunSignature({ timestamp, token, signature })) {
+        console.error("[inbound-email] Invalid Mailgun signature");
+        return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+      }
+    } else {
+      // Postal sends JSON
+      payload = await request.json();
+    }
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
   const parsed = parseInboundEmail(payload);
@@ -75,9 +108,17 @@ export async function POST(request: NextRequest) {
 
   // Create a clock for each government recipient that matches a campaign target
   const createdClocks = [];
+  const blockedRecipients: string[] = [];
 
   for (const recipientEmail of parsed.governmentRecipients) {
     if (!targetEmails.has(recipientEmail.toLowerCase())) continue;
+
+    // Evaluate domain before creating clock
+    const domainResult = await evaluateDomain(recipientEmail, parsed.senderEmail);
+    if (!domainResult.allowed) {
+      blockedRecipients.push(recipientEmail);
+      continue;
+    }
 
     // Duplicate check: same sender, same recipient, same subject, still active
     const duplicate = await prisma.clock.findFirst({
@@ -109,6 +150,21 @@ export async function POST(request: NextRequest) {
     });
 
     createdClocks.push({ id: clock.id, recipientEmail });
+  }
+
+  // If all recipients were blocked, notify the sender
+  if (blockedRecipients.length > 0 && createdClocks.length === 0) {
+    sendEmail(
+      domainBlockedEmail({
+        senderEmail: parsed.senderEmail,
+        blockedRecipients,
+      }),
+    ).catch((err) => console.error(`Failed to send domain-blocked email:`, err));
+
+    return NextResponse.json({
+      message: "All recipient domains are blocked",
+      blockedRecipients,
+    });
   }
 
   // Send confirmation emails (fire-and-forget, don't block the response)

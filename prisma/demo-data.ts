@@ -19,6 +19,16 @@ function hoursAgo(hours: number) {
 }
 
 async function main() {
+  // Truncate all tables for a clean reset
+  await prisma.$executeRawUnsafe(`TRUNCATE TABLE
+    government_resolution_requests,
+    status_events,
+    clocks,
+    campaign_targets,
+    campaigns
+    CASCADE`);
+  console.log("Tables truncated.");
+
   // Campaign 1: Mattapan Bus Route
   const c1 = await prisma.campaign.upsert({
     where: { identifier: "mattapan-bus-a7k2m" },

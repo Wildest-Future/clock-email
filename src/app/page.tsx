@@ -13,8 +13,10 @@ type CampaignWithClocks = Campaign & {
 
 export default async function HomePage() {
   const campaigns = await prisma.campaign.findMany({
+    where: { hidden: false },
     include: {
       clocks: {
+        where: { hidden: false },
         select: {
           status: true,
           startedAt: true,
@@ -23,7 +25,7 @@ export default async function HomePage() {
         },
         orderBy: { startedAt: "asc" },
       },
-      _count: { select: { clocks: true } },
+      _count: { select: { clocks: { where: { hidden: false } } } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -59,7 +61,7 @@ export default async function HomePage() {
             Start a campaign
           </Link>
           <Link
-            href="#campaigns"
+            href="/campaigns"
             className="bg-stone border border-sand-300 text-sand-700 font-medium px-5 py-2.5 rounded-lg hover:border-velvet-300 transition-colors text-sm"
           >
             See active campaigns

@@ -15,6 +15,12 @@ enum ClockStatus {
   inactive
 }
 
+enum DomainStatus {
+  approved
+  blocked
+  pending
+}
+
 model Campaign {
   identifier     String   @id
   slug           String
@@ -24,6 +30,7 @@ model Campaign {
   emailTemplate  String?  @map("email_template")
   suggestedSubject String? @map("suggested_subject")
   createdByEmail String   @map("created_by_email")
+  hidden         Boolean  @default(false)
   createdAt      DateTime @default(now()) @map("created_at")
 
   targets CampaignTarget[]
@@ -38,7 +45,7 @@ model CampaignTarget {
   campaignId     String @map("campaign_identifier")
   email          String
 
-  campaign Campaign @relation(fields: [campaignId], references: [identifier])
+  campaign Campaign @relation(fields: [campaignId], references: [identifier], onDelete: Cascade)
 
   @@unique([campaignId, email])
   @@map("campaign_targets")
@@ -55,12 +62,14 @@ model Clock {
   resolvedAt            DateTime?   @map("resolved_at")
   resolutionBackdatedTo DateTime?   @map("resolution_backdated_to")
   status                ClockStatus @default(active)
+  hidden                Boolean     @default(false)
+  hiddenReason          String?     @map("hidden_reason")
   checkInToken          String      @unique @map("check_in_token")
   lastCheckInSent       DateTime?   @map("last_check_in_sent")
   messageId             String?     @unique @map("message_id")
   createdAt             DateTime    @default(now()) @map("created_at")
 
-  campaign Campaign @relation(fields: [campaignIdentifier], references: [identifier])
+  campaign Campaign @relation(fields: [campaignIdentifier], references: [identifier], onDelete: Cascade)
   statusHistory StatusEvent[]
   resolutionRequest GovernmentResolutionRequest?
 
@@ -74,7 +83,7 @@ model StatusEvent {
   note      String?
   createdAt DateTime    @default(now()) @map("created_at")
 
-  clock Clock @relation(fields: [clockId], references: [id])
+  clock Clock @relation(fields: [clockId], references: [id], onDelete: Cascade)
 
   @@map("status_events")
 }
@@ -86,7 +95,19 @@ model GovernmentResolutionRequest {
   claimedResponseDate DateTime @map("claimed_response_date")
   note                String   @default("")
 
-  clock Clock @relation(fields: [clockId], references: [id])
+  clock Clock @relation(fields: [clockId], references: [id], onDelete: Cascade)
 
   @@map("government_resolution_requests")
+}
+
+model Domain {
+  domain      String       @id
+  status      DomainStatus @default(pending)
+  addedAt     DateTime     @default(now()) @map("added_at")
+  reviewedAt  DateTime?    @map("reviewed_at")
+  reviewedBy  String?      @map("reviewed_by")
+  reason      String?
+  submittedBy String?      @map("submitted_by")
+
+  @@map("domains")
 }

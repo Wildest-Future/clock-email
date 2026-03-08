@@ -61,7 +61,7 @@ export default async function ClockPage({
     },
   });
 
-  if (!clock) notFound();
+  if (!clock || clock.hidden) notFound();
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-10">

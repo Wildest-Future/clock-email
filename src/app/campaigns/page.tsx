@@ -27,16 +27,20 @@ export default async function CampaignsPage({
   const sortBy = (sort ?? "newest") as SortOption;
 
   const campaigns = await prisma.campaign.findMany({
-    where: q
-      ? {
-          OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { description: { contains: q, mode: "insensitive" } },
-          ],
-        }
-      : undefined,
+    where: {
+      hidden: false,
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: "insensitive" } },
+              { description: { contains: q, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
     include: {
       clocks: {
+        where: { hidden: false },
         select: {
           status: true,
           startedAt: true,
@@ -45,7 +49,7 @@ export default async function CampaignsPage({
         },
         orderBy: { startedAt: "asc" },
       },
-      _count: { select: { clocks: true } },
+      _count: { select: { clocks: { where: { hidden: false } } } },
     },
     orderBy:
       sortBy === "oldest"

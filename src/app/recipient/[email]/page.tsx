@@ -37,7 +37,7 @@ export default async function RecipientPage({
   const email = decodeURIComponent(encodedEmail);
 
   const clocks = await prisma.clock.findMany({
-    where: { recipientEmail: email },
+    where: { recipientEmail: email, hidden: false },
     orderBy: { startedAt: "asc" },
     include: { campaign: true },
   });
